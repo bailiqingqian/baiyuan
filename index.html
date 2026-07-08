@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
+<head><script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>柏源</title>
@@ -59,10 +59,11 @@
     // ===== 密码锁 =====
     (function() {
         var pwd = prompt("请输入密码进入柏源的世界：");
-        if (pwd !== "410025byqq") {
-            document.body.innerHTML = "<h2 style='text-align:center;margin-top:100px;color:#999;'>密码错误，无法进入。</h2>";
-            throw new Error("密码错误");
-        }
+var hash = CryptoJS.SHA256(pwd).toString();
+if (hash !== "43796ce7c48e9e334813b6a7a7e2b5f30ecfa9fc2ef4087ed8b78977abc26085") {
+    document.body.innerHTML = "<h2 style='text-align:center;margin-top:100px;color:#999;'>密码错误，无法进入。</h2>";
+    throw new Error("密码错误");
+}
     })();
 
     // ===== 核心变量 =====

@@ -326,8 +326,7 @@
         btn.disabled = true;
 
         const system = systemPromptInput.value.trim() || DEFAULT_SYSTEM;
-        let history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-
+        const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
         const recent = history.slice(-20);
 
         const messages = [ { role: 'system', content: system } ];

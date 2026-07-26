@@ -179,7 +179,7 @@
                     localStorage.setItem('chat_history', JSON.stringify(history));
                     loadHistory();
                     input.value = lastUserMsg;
-                    send();
+                    input.focus();
                 }
             };
             actions.appendChild(retryBtn);
@@ -209,9 +209,6 @@
                 loadHistory();
                 input.value = text;
                 input.focus();
-                window._isRetry = true;
-                send();
-                window._isRetry = false;
             };
             actions.appendChild(userRetryBtn);
             div.appendChild(actions);
@@ -261,7 +258,7 @@
                         localStorage.setItem('chat_history', JSON.stringify(history));
                         loadHistory();
                         input.value = lastUserMsg;
-                        send();
+                        input.focus();
                     }
                 };
                 actions.appendChild(retryBtn);
@@ -290,9 +287,6 @@
                     loadHistory();
                     input.value = msg.text;
                     input.focus();
-                    window._isRetry = true;
-                    send();
-                    window._isRetry = false;
                 };
                 actions.appendChild(userRetryBtn);
                 div.appendChild(actions);
@@ -333,23 +327,6 @@
 
         const system = systemPromptInput.value.trim() || DEFAULT_SYSTEM;
         let history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-
-        if (window._isRetry) {
-            let userMessages = history.filter(h => h.from === 'user');
-            if (userMessages.length >= 2) {
-                const last = userMessages[userMessages.length - 1];
-                const prev = userMessages[userMessages.length - 2];
-                if (last.text === prev.text) {
-                    for (let i = history.length - 1; i >= 0; i--) {
-                        if (history[i].from === 'user') {
-                            history.splice(i, 1);
-                            break;
-                        }
-                    }
-                    localStorage.setItem('chat_history', JSON.stringify(history));
-                }
-            }
-        }
 
         const recent = history.slice(-20);
 

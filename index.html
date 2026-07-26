@@ -173,9 +173,11 @@
                     }
                 }
                 if (lastUserMsg) {
+                    while (chat.firstChild) chat.removeChild(chat.firstChild);
                     div.remove();
                     history.pop();
                     localStorage.setItem('chat_history', JSON.stringify(history));
+                    loadHistory();
                     input.value = lastUserMsg;
                     send();
                 }
@@ -203,21 +205,13 @@
                 if (targetIdx === -1) return;
                 history.splice(targetIdx);
                 localStorage.setItem('chat_history', JSON.stringify(history));
-                const allBubbles = chat.querySelectorAll('.bubble');
-                let startIdx = -1;
-                for (let j = 0; j < allBubbles.length; j++) {
-                    if (allBubbles[j] === div) {
-                        startIdx = j;
-                        break;
-                    }
-                }
-                if (startIdx !== -1) {
-                    for (let k = allBubbles.length - 1; k >= startIdx; k--) {
-                        allBubbles[k].remove();
-                    }
-                }
+                while (chat.firstChild) chat.removeChild(chat.firstChild);
+                loadHistory();
                 input.value = text;
                 input.focus();
+                window._isRetry = true;
+                send();
+                window._isRetry = false;
             };
             actions.appendChild(userRetryBtn);
             div.appendChild(actions);
@@ -261,9 +255,11 @@
                         }
                     }
                     if (lastUserMsg) {
+                        while (chat.firstChild) chat.removeChild(chat.firstChild);
                         div.remove();
                         history.pop();
                         localStorage.setItem('chat_history', JSON.stringify(history));
+                        loadHistory();
                         input.value = lastUserMsg;
                         send();
                     }
@@ -290,21 +286,13 @@
                     if (targetIdx === -1) return;
                     history.splice(targetIdx);
                     localStorage.setItem('chat_history', JSON.stringify(history));
-                    const allBubbles = chat.querySelectorAll('.bubble');
-                    let startIdx = -1;
-                    for (let j = 0; j < allBubbles.length; j++) {
-                        if (allBubbles[j] === div) {
-                            startIdx = j;
-                            break;
-                        }
-                    }
-                    if (startIdx !== -1) {
-                        for (let k = allBubbles.length - 1; k >= startIdx; k--) {
-                            allBubbles[k].remove();
-                        }
-                    }
+                    while (chat.firstChild) chat.removeChild(chat.firstChild);
+                    loadHistory();
                     input.value = msg.text;
                     input.focus();
+                    window._isRetry = true;
+                    send();
+                    window._isRetry = false;
                 };
                 actions.appendChild(userRetryBtn);
                 div.appendChild(actions);
@@ -344,7 +332,25 @@
         btn.disabled = true;
 
         const system = systemPromptInput.value.trim() || DEFAULT_SYSTEM;
-        const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+        let history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+
+        if (window._isRetry) {
+            let userMessages = history.filter(h => h.from === 'user');
+            if (userMessages.length >= 2) {
+                const last = userMessages[userMessages.length - 1];
+                const prev = userMessages[userMessages.length - 2];
+                if (last.text === prev.text) {
+                    for (let i = history.length - 1; i >= 0; i--) {
+                        if (history[i].from === 'user') {
+                            history.splice(i, 1);
+                            break;
+                        }
+                    }
+                    localStorage.setItem('chat_history', JSON.stringify(history));
+                }
+            }
+        }
+
         const recent = history.slice(-20);
 
         const messages = [ { role: 'system', content: system } ];

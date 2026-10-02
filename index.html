@@ -73,7 +73,7 @@
     </div>
     <div class="settings" id="settings">
         <div class="row">
-            <input type="password" id="apiKey" placeholder="输入 DeepSeek API Key">
+            <input type="password" id="apiKey" placeholder="输入 GLM API Key">
             <button onclick="saveSettings()">保存</button>
         </div>
         <textarea id="systemPrompt" rows="2" placeholder="柏源人设（可选，不填则用默认）"></textarea>
@@ -315,7 +315,7 @@
         if (!msg) return;
         const key = apiKeyInput.value.trim() || localStorage.getItem('deepseek_key');
         if (!key) {
-            alert('请先在顶部填写 DeepSeek API Key 并保存');
+            alert('请先在顶部填写 GLM API Key 并保存');
             return;
         }
 
@@ -338,10 +338,10 @@
         showTyping();
 
         try {
-            const resp = await fetch('https://api.deepseek.com/chat/completions', {
+            const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: messages, max_tokens: 2048, stream: false })
+                body: JSON.stringify({ model: 'glm-5.3-flash', messages: messages, max_tokens: 2048, stream: false })
             });
             const data = await resp.json();
             hideTyping();

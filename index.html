@@ -173,10 +173,18 @@
                     }
                 }
                 if (lastUserMsg) {
-                    while (chat.firstChild) chat.removeChild(chat.firstChild);
-                    div.remove();
-                    history.pop();
+                    let targetIdx = -1;
+                    for (let i = history.length - 1; i >= 0; i--) {
+                        if (history[i].from === 'user') {
+                            targetIdx = i;
+                            break;
+                        }
+                    }
+                    if (targetIdx !== -1) {
+                        history.splice(targetIdx);
+                    }
                     localStorage.setItem('chat_history', JSON.stringify(history));
+                    while (chat.firstChild) chat.removeChild(chat.firstChild);
                     loadHistory();
                     input.value = lastUserMsg;
                     input.focus();
@@ -217,9 +225,12 @@
         chat.appendChild(div);
         chat.scrollTop = chat.scrollHeight;
 
-        const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-        history.push({ from, text, time: Date.now() });
-        localStorage.setItem('chat_history', JSON.stringify(history));
+        // 只有当不是重说模式时，才自动保存
+        if (!window._isRetry) {
+            const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+            history.push({ from, text, time: Date.now() });
+            localStorage.setItem('chat_history', JSON.stringify(history));
+        }
     }
 
     // ===== 加载历史记录 =====
@@ -252,10 +263,18 @@
                         }
                     }
                     if (lastUserMsg) {
-                        while (chat.firstChild) chat.removeChild(chat.firstChild);
-                        div.remove();
-                        history.pop();
+                        let targetIdx = -1;
+                        for (let i = history.length - 1; i >= 0; i--) {
+                            if (history[i].from === 'user') {
+                                targetIdx = i;
+                                break;
+                            }
+                        }
+                        if (targetIdx !== -1) {
+                            history.splice(targetIdx);
+                        }
                         localStorage.setItem('chat_history', JSON.stringify(history));
+                        while (chat.firstChild) chat.removeChild(chat.firstChild);
                         loadHistory();
                         input.value = lastUserMsg;
                         input.focus();
@@ -322,13 +341,14 @@
         input.value = '';
         input.style.height = 'auto';
         addMessage(msg, 'user');
+
         const btn = document.getElementById('sendBtn');
         btn.disabled = true;
 
         const system = systemPromptInput.value.trim() || DEFAULT_SYSTEM;
         const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
         
-        // 清理历史记录中连续重复的用户消息
+        // 清理连续重复的用户消息
         let cleanedHistory = [];
         for (let i = 0; i < history.length; i++) {
             const h = history[i];

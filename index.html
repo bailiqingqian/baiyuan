@@ -327,7 +327,17 @@
 
         const system = systemPromptInput.value.trim() || DEFAULT_SYSTEM;
         const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-        const recent = history.slice(-20);
+        
+        // 清理历史记录中连续重复的用户消息
+        let cleanedHistory = [];
+        for (let i = 0; i < history.length; i++) {
+            const h = history[i];
+            if (i > 0 && h.from === 'user' && history[i-1].from === 'user' && h.text === history[i-1].text) {
+                continue;
+            }
+            cleanedHistory.push(h);
+        }
+        const recent = cleanedHistory.slice(-20);
 
         const messages = [ { role: 'system', content: system } ];
         for (const h of recent) {

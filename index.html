@@ -73,7 +73,7 @@
     </div>
     <div class="settings" id="settings">
         <div class="row">
-            <input type="password" id="apiKey" placeholder="输入 GLM API Key">
+            <input type="password" id="apiKey" placeholder="输入 DeepSeek API Key">
             <button onclick="saveSettings()">保存</button>
         </div>
         <textarea id="systemPrompt" rows="2" placeholder="柏源人设（可选，不填则用默认）"></textarea>
@@ -173,18 +173,10 @@
                     }
                 }
                 if (lastUserMsg) {
-                    let targetIdx = -1;
-                    for (let i = history.length - 1; i >= 0; i--) {
-                        if (history[i].from === 'user') {
-                            targetIdx = i;
-                            break;
-                        }
-                    }
-                    if (targetIdx !== -1) {
-                        history.splice(targetIdx);
-                    }
-                    localStorage.setItem('chat_history', JSON.stringify(history));
                     while (chat.firstChild) chat.removeChild(chat.firstChild);
+                    div.remove();
+                    history.pop();
+                    localStorage.setItem('chat_history', JSON.stringify(history));
                     loadHistory();
                     input.value = lastUserMsg;
                     input.focus();
@@ -225,12 +217,9 @@
         chat.appendChild(div);
         chat.scrollTop = chat.scrollHeight;
 
-        // 只有当不是重说模式时，才自动保存
-        if (!window._isRetry) {
-            const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-            history.push({ from, text, time: Date.now() });
-            localStorage.setItem('chat_history', JSON.stringify(history));
-        }
+        const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+        history.push({ from, text, time: Date.now() });
+        localStorage.setItem('chat_history', JSON.stringify(history));
     }
 
     // ===== 加载历史记录 =====
@@ -263,18 +252,10 @@
                         }
                     }
                     if (lastUserMsg) {
-                        let targetIdx = -1;
-                        for (let i = history.length - 1; i >= 0; i--) {
-                            if (history[i].from === 'user') {
-                                targetIdx = i;
-                                break;
-                            }
-                        }
-                        if (targetIdx !== -1) {
-                            history.splice(targetIdx);
-                        }
-                        localStorage.setItem('chat_history', JSON.stringify(history));
                         while (chat.firstChild) chat.removeChild(chat.firstChild);
+                        div.remove();
+                        history.pop();
+                        localStorage.setItem('chat_history', JSON.stringify(history));
                         loadHistory();
                         input.value = lastUserMsg;
                         input.focus();
@@ -334,30 +315,19 @@
         if (!msg) return;
         const key = apiKeyInput.value.trim() || localStorage.getItem('deepseek_key');
         if (!key) {
-            alert('请先在顶部填写 GLM API Key 并保存');
+            alert('请先在顶部填写 DeepSeek API Key 并保存');
             return;
         }
 
         input.value = '';
         input.style.height = 'auto';
         addMessage(msg, 'user');
-
         const btn = document.getElementById('sendBtn');
         btn.disabled = true;
 
         const system = systemPromptInput.value.trim() || DEFAULT_SYSTEM;
         const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-        
-        // 清理连续重复的用户消息
-        let cleanedHistory = [];
-        for (let i = 0; i < history.length; i++) {
-            const h = history[i];
-            if (i > 0 && h.from === 'user' && history[i-1].from === 'user' && h.text === history[i-1].text) {
-                continue;
-            }
-            cleanedHistory.push(h);
-        }
-        const recent = cleanedHistory.slice(-20);
+        const recent = history.slice(-20);
 
         const messages = [ { role: 'system', content: system } ];
         for (const h of recent) {
@@ -368,10 +338,10 @@
         showTyping();
 
         try {
-            const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+            const resp = await fetch('https://api.deepseek.com/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({ model: 'glm-5.3-flash', messages: messages, max_tokens: 2048, stream: false })
+                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: messages, max_tokens: 2048, stream: false })
             });
             const data = await resp.json();
             hideTyping();

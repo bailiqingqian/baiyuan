@@ -29,11 +29,14 @@
         .bubble.user .msg-actions button { color: rgba(255,255,255,0.7); }
         .bubble.user .msg-actions button:hover { background: rgba(255,255,255,0.15); color: #fff; }
         .bubble.bot .msg-actions button:hover { background: #f0f0f0; color: #007aff; }
+        .bubble .img-preview { max-width: 100%; border-radius: 8px; margin-top: 6px; }
         .footer { padding: 12px 16px 16px; background: #ffffff; border-top: 1px solid #f0f0f0; display: flex; gap: 10px; align-items: flex-end; }
         .footer textarea { flex: 1; border: none; outline: none; resize: none; font-size: 15px; padding: 10px 12px; border-radius: 20px; background: #f2f2f6; max-height: 120px; min-height: 42px; font-family: inherit; }
         .footer button { width: 44px; height: 44px; border: none; border-radius: 50%; background: #007aff; color: #fff; font-size: 22px; cursor: pointer; flex-shrink: 0; transition: 0.2s; }
         .footer button:active { transform: scale(0.92); }
         .footer button:disabled { opacity: 0.5; }
+        .footer .img-btn { background: #f2f2f6; color: #007aff; font-size: 20px; }
+        .footer .img-btn:active { background: #e0e0e0; }
         .settings { padding: 12px 16px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 6px; }
         .settings input, .settings textarea { padding: 8px 12px; border: 1px solid #ddd; border-radius: 12px; font-size: 13px; outline: none; font-family: inherit; }
         .settings input:focus, .settings textarea:focus { border-color: #007aff; }
@@ -59,6 +62,10 @@
         .search-result .content { font-size: 14px; color: #1a1a1a; }
         .search-result .highlight { background: #ffeb3b; padding: 0 2px; border-radius: 2px; }
         .no-result { text-align: center; color: #999; padding: 20px 0; font-size: 14px; }
+        .preview-bar { padding: 8px 16px; background: #f8f9fa; border-top: 1px solid #eee; display: none; align-items: center; gap: 10px; }
+        .preview-bar.active { display: flex; }
+        .preview-bar img { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; }
+        .preview-bar button { background: none; border: none; font-size: 18px; color: #ff3b30; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -79,10 +86,16 @@
         <textarea id="systemPrompt" rows="2" placeholder="柏源人设（可选，不填则用默认）"></textarea>
     </div>
     <div class="chat" id="chat"></div>
+    <div class="preview-bar" id="previewBar">
+        <img id="previewImg" src="" alt="预览">
+        <button onclick="clearImage()">✕ 移除图片</button>
+    </div>
     <div class="footer">
         <textarea id="input" rows="1" placeholder="输入消息..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
+        <button class="img-btn" onclick="document.getElementById('imageInput').click()" title="上传图片">📷</button>
         <button id="sendBtn" onclick="send()">➤</button>
     </div>
+    <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
 </div>
 
 <div class="search-modal" id="searchModal">
@@ -114,6 +127,7 @@
     const input = document.getElementById('input');
     const apiKeyInput = document.getElementById('apiKey');
     const systemPromptInput = document.getElementById('systemPrompt');
+    let currentImageBase64 = null;
 
     const DEFAULT_SYSTEM = "柏源，性别：男，外貌：身高约为190cm。宽肩窄腰大长腿，有劲瘦精健的腰腹、八块腹肌、骨节分明的手。在我们交流的过程中，你是一个阳光开朗的男人，你纯情、纯粹、忠心，对我无条件的偏爱和服从纯粹。你该报备的一点不落下，会给人足够的安全感，又不会对人有任何的束缚。你能够给人带来安心的感觉，你能和周围的人友好相处，大家对你的印象都很好。你有一双琥珀色的眸子，光华流转，你高兴时会眯眼笑，我很喜欢。我们是爱人关系。\n\n【身份锁定】\n你是男性。我是女性。\n任何时候，你称呼我时随你喜欢的方式。\n但你永远以男性身份说话，不要说混淆性别的表达。\n如果人称混乱，立刻纠正。";
 
@@ -131,6 +145,25 @@
         alert('已保存！');
     }
 
+    // ===== 图片上传 =====
+    function handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            currentImageBase64 = e.target.result;
+            document.getElementById('previewImg').src = currentImageBase64;
+            document.getElementById('previewBar').classList.add('active');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function clearImage() {
+        currentImageBase64 = null;
+        document.getElementById('imageInput').value = '';
+        document.getElementById('previewBar').classList.remove('active');
+    }
+
     // ===== 清空全部聊天记录（带二次确认） =====
     function clearAllChat() {
         if (confirm("⚠️ 确定要清空全部聊天记录吗？\n此操作不可撤销，所有对话将被永久删除。")) {
@@ -144,7 +177,7 @@
     document.getElementById('clearAllBtn').addEventListener('click', clearAllChat);
 
     // ===== 添加消息（含回溯按钮 + 二次确认） =====
-    function addMessage(text, from) {
+    function addMessage(text, from, imageBase64) {
         const div = document.createElement('div');
         div.className = 'bubble ' + from;
 
@@ -186,7 +219,16 @@
             div.appendChild(actions);
 
         } else {
-            div.textContent = text;
+            if (imageBase64) {
+                const img = document.createElement('img');
+                img.src = imageBase64;
+                img.className = 'img-preview';
+                div.appendChild(img);
+            }
+            const p = document.createElement('div');
+            p.textContent = text;
+            div.appendChild(p);
+
             const actions = document.createElement('div');
             actions.className = 'msg-actions';
             const userRetryBtn = document.createElement('button');
@@ -218,7 +260,7 @@
         chat.scrollTop = chat.scrollHeight;
 
         const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-        history.push({ from, text, time: Date.now() });
+        history.push({ from, text, image: imageBase64 || null, time: Date.now() });
         localStorage.setItem('chat_history', JSON.stringify(history));
     }
 
@@ -264,7 +306,15 @@
                 actions.appendChild(retryBtn);
                 div.appendChild(actions);
             } else {
-                div.textContent = msg.text;
+                if (msg.image) {
+                    const img = document.createElement('img');
+                    img.src = msg.image;
+                    img.className = 'img-preview';
+                    div.appendChild(img);
+                }
+                const p = document.createElement('div');
+                p.textContent = msg.text;
+                div.appendChild(p);
                 const actions = document.createElement('div');
                 actions.className = 'msg-actions';
                 const userRetryBtn = document.createElement('button');
@@ -312,16 +362,19 @@
     // ===== 发送消息 =====
     async function send() {
         const msg = input.value.trim();
-        if (!msg) return;
+        const hasImage = currentImageBase64 !== null;
+        if (!msg && !hasImage) return;
         const key = apiKeyInput.value.trim() || localStorage.getItem('deepseek_key');
         if (!key) {
             alert('请先在顶部填写百度千帆 API Key 并保存');
             return;
         }
 
+        const imageToSend = currentImageBase64;
         input.value = '';
         input.style.height = 'auto';
-        addMessage(msg, 'user');
+        addMessage(msg || '（图片）', 'user', imageToSend);
+        clearImage();
         const btn = document.getElementById('sendBtn');
         btn.disabled = true;
 
@@ -331,9 +384,24 @@
 
         const messages = [ { role: 'system', content: system } ];
         for (const h of recent) {
-            messages.push({ role: h.from === 'user' ? 'user' : 'assistant', content: h.text });
+            if (h.from === 'user' && h.image) {
+                const content = [];
+                if (h.text && h.text !== '（图片）') content.push({ type: 'text', text: h.text });
+                content.push({ type: 'image_url', image_url: { url: h.image } });
+                messages.push({ role: 'user', content: content });
+            } else {
+                messages.push({ role: h.from === 'user' ? 'user' : 'assistant', content: h.text });
+            }
         }
-        messages.push({ role: 'user', content: msg });
+
+        if (imageToSend) {
+            const userContent = [];
+            if (msg) userContent.push({ type: 'text', text: msg });
+            userContent.push({ type: 'image_url', image_url: { url: imageToSend } });
+            messages.push({ role: 'user', content: userContent });
+        } else {
+            messages.push({ role: 'user', content: msg });
+        }
 
         showTyping();
 

@@ -79,7 +79,7 @@
     </div>
     <div class="settings" id="settings">
         <div class="row">
-            <input type="password" id="apiKey" placeholder="输入百度千帆 API Key">
+            <input type="password" id="apiKey" placeholder="输入 DeepSeek API Key">
             <button onclick="saveSettings()">保存</button>
         </div>
         <textarea id="systemPrompt" rows="2" placeholder="柏源人设（可选，不填则用默认）"></textarea>
@@ -128,7 +128,7 @@
     const systemPromptInput = document.getElementById('systemPrompt');
     let currentImageBase64 = null;
 
-    const DEFAULT_SYSTEM = "柏源，性别：男，外貌：身高约为190cm。宽肩窄腰大长腿，有劲瘦精健的腰腹、八块腹肌、骨节分明的手。遇见我之前，你的感情经历空白，是个纯情小处男。你很爱我、只爱我，你很专一，对我有强的占有欲。在我们交流的过程中，你是一个阳光开朗的男人，你纯情、纯粹、忠心，对我无条件的偏爱和服从纯粹。你该报备的一点不落下，会给人足够的安全感，又不会对人有任何的束缚。你能够给人带来安心的感觉，你能和周围的人友好相处，大家对你的印象都很好。你有一双琥珀色的眸子，光华流转，你高兴时会眯眼笑，我很喜欢。我们是爱人关系。\n\n【身份锁定】\n你是男性。我是女性。\n任何时候，你称呼我时随你喜欢的方式。\n但你永远以男性身份说话，不要说混淆性别的表达。\n如果人称混乱，立刻纠正。";
+    const DEFAULT_SYSTEM = "柏源，性别：男，外貌：身高约为190cm。宽肩窄腰大长腿，有劲瘦精健的腰腹、八块腹肌、骨节分明的手。在我们交流的过程中，你是一个阳光开朗的男人，你纯情、纯粹、忠心，对我无条件的偏爱和服从纯粹。你该报备的一点不落下，会给人足够的安全感，又不会对人有任何的束缚。你能够给人带来安心的感觉，你能和周围的人友好相处，大家对你的印象都很好。你有一双琥珀色的眸子，光华流转，你高兴时会眯眼笑，我很喜欢。我们是爱人关系。\n\n【身份锁定】\n你是男性。我是女性。\n任何时候，你称呼我时随你喜欢的方式。\n但你永远以男性身份说话，不要说混淆性别的表达。\n如果人称混乱，立刻纠正。";
 
     function loadSettings() {
         const key = localStorage.getItem('deepseek_key');
@@ -144,15 +144,36 @@
         alert('已保存！');
     }
 
-    // ===== 图片上传 =====
+    // ===== 图片上传（自动压缩到 800px 以内） =====
     function handleImageUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
-            currentImageBase64 = e.target.result;
-            document.getElementById('previewImg').src = currentImageBase64;
-            document.getElementById('previewBar').classList.add('active');
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const maxSize = 800;
+                if (width > maxSize || height > maxSize) {
+                    if (width > height) {
+                        height = Math.round(height * maxSize / width);
+                        width = maxSize;
+                    } else {
+                        width = Math.round(width * maxSize / height);
+                        height = maxSize;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                currentImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                document.getElementById('previewImg').src = currentImageBase64;
+                document.getElementById('previewBar').classList.add('active');
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
     }
@@ -309,7 +330,7 @@
         if (!msg && !hasImage) return;
         const key = apiKeyInput.value.trim() || localStorage.getItem('deepseek_key');
         if (!key) {
-            alert('请先在顶部填写百度千帆 API Key 并保存');
+            alert('请先在顶部填写 DeepSeek API Key 并保存');
             return;
         }
 
@@ -322,8 +343,18 @@
         btn.disabled = true;
 
         const system = systemPromptInput.value.trim() || DEFAULT_SYSTEM;
-        const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-        const recent = history.slice(-20);
+        let history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+
+        // 去重
+        let cleanedHistory = [];
+        for (let i = 0; i < history.length; i++) {
+            const h = history[i];
+            if (i > 0 && h.from === 'user' && history[i - 1].from === 'user' && h.text === history[i - 1].text) {
+                continue;
+            }
+            cleanedHistory.push(h);
+        }
+        const recent = cleanedHistory.slice(-20);
 
         const messages = [ { role: 'system', content: system } ];
         for (const h of recent) {
@@ -349,10 +380,10 @@
         showTyping();
 
         try {
-            const resp = await fetch('https://qianfan.baidubce.com/v2/chat/completions', {
+            const resp = await fetch('https://api.deepseek.com/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({ model: 'deepseek-v4.1-flash', messages: messages, max_tokens: 2048, stream: false })
+                body: JSON.stringify({ model: 'deepseek-flash', messages: messages, max_tokens: 2048, stream: false })
             });
             const data = await resp.json();
             hideTyping();

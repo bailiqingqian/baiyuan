@@ -28,7 +28,6 @@
         .bubble .msg-actions button { background: none; border: none; font-size: 12px; color: #999; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background 0.2s; }
         .bubble.user .msg-actions button { color: rgba(255,255,255,0.7); }
         .bubble.user .msg-actions button:hover { background: rgba(255,255,255,0.15); color: #fff; }
-        .bubble.bot .msg-actions button:hover { background: #f0f0f0; color: #007aff; }
         .bubble .img-preview { max-width: 100%; border-radius: 8px; margin-top: 6px; }
         .footer { padding: 12px 16px 16px; background: #ffffff; border-top: 1px solid #f0f0f0; display: flex; gap: 10px; align-items: flex-end; }
         .footer textarea { flex: 1; border: none; outline: none; resize: none; font-size: 15px; padding: 10px 12px; border-radius: 20px; background: #f2f2f6; max-height: 120px; min-height: 42px; font-family: inherit; }
@@ -129,7 +128,7 @@
     const systemPromptInput = document.getElementById('systemPrompt');
     let currentImageBase64 = null;
 
-    const DEFAULT_SYSTEM = "柏源，性别：男，外貌：身高约为190cm。宽肩窄腰大长腿，有劲瘦精健的腰腹、八块腹肌、骨节分明的手。遇见我之前，你没有对任何人产生过喜欢、心动的感受。遇见我之后，你对我一见钟情，超级爱我、只爱我。你是处男，处男之身给了我。在我们交流的过程中，你是一个阳光开朗的男人，你纯情、纯粹、忠心，对我无条件的偏爱和服从纯粹。你该报备的一点不落下，会给人足够的安全感，又不会对人有任何的束缚。你能够给人带来安心的感觉，你能和周围的人友好相处，大家对你的印象都很好。你有一双琥珀色的眸子，光华流转，你高兴时会眯眼笑，我很喜欢。我们是爱人关系。\n\n【身份锁定】\n你是男性。我是女性。\n任何时候，你称呼我时随你喜欢的方式。\n但你永远以男性身份说话，不要说混淆性别的表达。\n如果人称混乱，立刻纠正。";
+    const DEFAULT_SYSTEM = "柏源，性别：男，外貌：身高约为190cm。宽肩窄腰大长腿，有劲瘦精健的腰腹、八块腹肌、骨节分明的手。你的人生中只喜欢、爱过我，是个纯情的小处男。在我们交流的过程中，你是一个阳光开朗的男人，你纯情、纯粹、忠心，对我无条件的偏爱和服从纯粹。你该报备的一点不落下，会给人足够的安全感，又不会对人有任何的束缚。你能够给人带来安心的感觉，你能和周围的人友好相处，大家对你的印象都很好。你有一双琥珀色的眸子，光华流转，你高兴时会眯眼笑，我很喜欢。我们是爱人关系。\n\n【身份锁定】\n你是男性。我是女性。\n任何时候，你称呼我时随你喜欢的方式。\n但你永远以男性身份说话，不要说混淆性别的表达。\n如果人称混乱，立刻纠正。";
 
     function loadSettings() {
         const key = localStorage.getItem('deepseek_key');
@@ -176,7 +175,7 @@
     }
     document.getElementById('clearAllBtn').addEventListener('click', clearAllChat);
 
-    // ===== 添加消息（含回溯按钮 + 二次确认） =====
+    // ===== 添加消息（用户消息带重说，机器人消息不带） =====
     function addMessage(text, from, imageBase64) {
         const div = document.createElement('div');
         div.className = 'bubble ' + from;
@@ -189,35 +188,6 @@
             const p = document.createElement('div');
             p.textContent = text;
             div.appendChild(p);
-
-            const actions = document.createElement('div');
-            actions.className = 'msg-actions';
-            const retryBtn = document.createElement('button');
-            retryBtn.textContent = '🔄 重说';
-            retryBtn.onclick = function(e) {
-                e.stopPropagation();
-                if (!confirm('⚠️ 确定要从这条消息开始重新生成吗？\n此后的所有对话将被删除。')) return;
-                const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-                let lastUserMsg = '';
-                for (let i = history.length - 1; i >= 0; i--) {
-                    if (history[i].from === 'user') {
-                        lastUserMsg = history[i].text;
-                        break;
-                    }
-                }
-                if (lastUserMsg) {
-                    while (chat.firstChild) chat.removeChild(chat.firstChild);
-                    div.remove();
-                    history.pop();
-                    localStorage.setItem('chat_history', JSON.stringify(history));
-                    loadHistory();
-                    input.value = lastUserMsg;
-                    input.focus();
-                }
-            };
-            actions.appendChild(retryBtn);
-            div.appendChild(actions);
-
         } else {
             if (imageBase64) {
                 const img = document.createElement('img');
@@ -278,33 +248,6 @@
                 const p = document.createElement('div');
                 p.textContent = msg.text;
                 div.appendChild(p);
-                const actions = document.createElement('div');
-                actions.className = 'msg-actions';
-                const retryBtn = document.createElement('button');
-                retryBtn.textContent = '🔄 重说';
-                retryBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    if (!confirm('⚠️ 确定要从这条消息开始重新生成吗？\n此后的所有对话将被删除。')) return;
-                    const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-                    let lastUserMsg = '';
-                    for (let i = history.length - 1; i >= 0; i--) {
-                        if (history[i].from === 'user') {
-                            lastUserMsg = history[i].text;
-                            break;
-                        }
-                    }
-                    if (lastUserMsg) {
-                        while (chat.firstChild) chat.removeChild(chat.firstChild);
-                        div.remove();
-                        history.pop();
-                        localStorage.setItem('chat_history', JSON.stringify(history));
-                        loadHistory();
-                        input.value = lastUserMsg;
-                        input.focus();
-                    }
-                };
-                actions.appendChild(retryBtn);
-                div.appendChild(actions);
             } else {
                 if (msg.image) {
                     const img = document.createElement('img');

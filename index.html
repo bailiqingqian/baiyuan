@@ -34,8 +34,6 @@
         .footer button { width: 44px; height: 44px; border: none; border-radius: 50%; background: #007aff; color: #fff; font-size: 22px; cursor: pointer; flex-shrink: 0; transition: 0.2s; }
         .footer button:active { transform: scale(0.92); }
         .footer button:disabled { opacity: 0.5; }
-        .footer .img-btn { background: #f2f2f6; color: #007aff; font-size: 20px; }
-        .footer .img-btn:active { background: #e0e0e0; }
         .settings { padding: 12px 16px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; flex-direction: column; gap: 6px; }
         .settings input, .settings textarea { padding: 8px 12px; border: 1px solid #ddd; border-radius: 12px; font-size: 13px; outline: none; font-family: inherit; }
         .settings input:focus, .settings textarea:focus { border-color: #007aff; }
@@ -91,7 +89,6 @@
     </div>
     <div class="footer">
         <textarea id="input" rows="1" placeholder="输入消息..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
-        <button class="img-btn" onclick="document.getElementById('imageInput').click()" title="上传图片">📷</button>
         <button id="sendBtn" onclick="send()">➤</button>
     </div>
     <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="handleImageUpload(event)">
@@ -144,7 +141,7 @@
         alert('已保存！');
     }
 
-    // ===== 图片上传（自动压缩到 800px 以内） =====
+    // ===== 图片上传（逻辑保留，但按钮已隐藏） =====
     function handleImageUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -323,22 +320,19 @@
         if (el) el.remove();
     }
 
-    // ===== 发送消息 =====
+    // ===== 发送消息（模型仍为纯文本 deepseek-v4-flash，不发送图片） =====
     async function send() {
         const msg = input.value.trim();
-        const hasImage = currentImageBase64 !== null;
-        if (!msg && !hasImage) return;
+        if (!msg) return;
         const key = apiKeyInput.value.trim() || localStorage.getItem('deepseek_key');
         if (!key) {
             alert('请先在顶部填写 DeepSeek API Key 并保存');
             return;
         }
 
-        const imageToSend = currentImageBase64;
         input.value = '';
         input.style.height = 'auto';
-        addMessage(msg || '（图片）', 'user', imageToSend);
-        clearImage();
+        addMessage(msg, 'user');
         const btn = document.getElementById('sendBtn');
         btn.disabled = true;
 
@@ -358,24 +352,9 @@
 
         const messages = [ { role: 'system', content: system } ];
         for (const h of recent) {
-            if (h.from === 'user' && h.image) {
-                const content = [];
-                if (h.text && h.text !== '（图片）') content.push({ type: 'text', text: h.text });
-                content.push({ type: 'image_url', image_url: { url: h.image } });
-                messages.push({ role: 'user', content: content });
-            } else {
-                messages.push({ role: h.from === 'user' ? 'user' : 'assistant', content: h.text });
-            }
+            messages.push({ role: h.from === 'user' ? 'user' : 'assistant', content: h.text });
         }
-
-        if (imageToSend) {
-            const userContent = [];
-            if (msg) userContent.push({ type: 'text', text: msg });
-            userContent.push({ type: 'image_url', image_url: { url: imageToSend } });
-            messages.push({ role: 'user', content: userContent });
-        } else {
-            messages.push({ role: 'user', content: msg });
-        }
+        messages.push({ role: 'user', content: msg });
 
         showTyping();
 
@@ -383,7 +362,7 @@
             const resp = await fetch('https://api.deepseek.com/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({ model: 'deepseek-flash', messages: messages, max_tokens: 2048, stream: false })
+                body: JSON.stringify({ model: 'deepseek-v4-flash', messages: messages, max_tokens: 2048, stream: false })
             });
             const data = await resp.json();
             hideTyping();
